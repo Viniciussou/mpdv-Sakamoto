@@ -49,8 +49,7 @@ da coluna `estoque` (o estoque só muda pelas funções, que registram o movimen
 - Desativar vendedor: tela *Vendedores* (ou `update perfis_mpdv set ativo=false`).
 
 ## 3. Variáveis de ambiente
-Não há `.env` (site estático). A configuração pública está em `assets/js/config.js`: `SUPABASE_URL` e a chave
-**publishable** (já preenchidas com as do seu projeto). **Nunca** coloque service_role/secret key no front.
+Não há `.env` (site estático). O `config.js` do repositório é vazio e é gerado no build a partir das variáveis da Vercel (URL e chave **pública**). **Nunca** coloque service_role/secret key no front.
 Se mudar de projeto, ajuste também a URL no CSP do `netlify.toml`.
 
 ## 4. Como testar cada login
@@ -80,7 +79,7 @@ O `netlify.toml` aplica CSP e demais cabeçalhos.
 3. **Storage / Integrations → Supabase → Add** (Marketplace). A Vercel cria o projeto Supabase e injeta as variáveis
    (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, etc.). O build lê **só a URL e a chave pública** e gera o
    `config.js`. Se encontrar chave secreta (`service_role`/`sb_secret_`) no lugar da pública, **o build é abortado**.
-   Para usar outro projeto, defina `MPDV_SUPABASE_URL` e `MPDV_SUPABASE_KEY` (têm prioridade).
+   Nada fica no código: sem as variáveis, **o build falha** com mensagem explicando. Para usar outro projeto, defina `MPDV_SUPABASE_URL` e `MPDV_SUPABASE_KEY` (têm prioridade).
 4. **O banco desse projeto novo está vazio.** Abra o painel do Supabase (pela integração → *Open in Supabase*) e rode, nesta ordem,
    `02_migracao.sql` e `03_storage.sql` (o `materiais_mpdv` é criado se não existir), desligue o cadastro aberto, crie os usuários
    e rode `04_definir_marketing.sql` — igual ao passo 1 deste README. Os dados do projeto antigo **não** migram sozinhos.

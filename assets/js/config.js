@@ -1,7 +1,5 @@
-// Configuração PÚBLICA do projeto Supabase.
-// A "publishable key" (antiga anon key) é feita para ficar no navegador — a segurança vem do RLS e
-// das funções SQL. NUNCA coloque aqui a service_role / secret key.
-export const SUPABASE_URL = 'https://mnyaqzxuzuiaqxkwqyfp.supabase.co';
-export const SUPABASE_KEY = 'sb_publishable_Bf0AS9TGTkdPPlmak2cF5Q_Z5IM_pwT';
-// Intervalo (ms) do recarregamento automático quando o Realtime não estiver disponível.
+// Este arquivo é SUBSTITUÍDO no build (npm run build) com as variáveis de ambiente da Vercel.
+// Nada de URL/chave fica no repositório. Veja scripts/build.mjs e o README.
+export const SUPABASE_URL = '';
+export const SUPABASE_KEY = '';
 export const POLL_MS = 30000;

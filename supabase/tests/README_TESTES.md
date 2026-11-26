@@ -4,5 +4,5 @@ JWT via `request.jwt.claim.sub`), com **PostgREST real** e um gateway de autenti
 
 - `test_banco.py` — 69 verificações de RLS, RPCs, estoque e concorrência (25 requisições simultâneas, disputa de estoque,
   cancelamento simultâneo). `PGHOST=/tmp PGPORT=5544 PGUSER=postgres python3 test_banco.py t`
-- `e2e.js` — 58 verificações no navegador (Playwright): login, rotas, carrinho, envio, bloqueios, cancelamento, status,
+- `e2e.cjs` — 58 verificações no navegador (Playwright): login, rotas, carrinho, envio, bloqueios, cancelamento, status,
   mensagens, notas internas, produtos/imagem/estoque, vendedores, mobile/tablet, ataques diretos à API.

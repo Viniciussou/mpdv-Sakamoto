@@ -2,6 +2,10 @@
 // aqui apenas chamamos e traduzimos erros.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  document.getElementById('app').innerHTML = '<div style="padding:32px;font-family:sans-serif;max-width:520px;margin:10vh auto"><h2>Configuração ausente</h2><p>As variáveis do Supabase não foram definidas no deploy. Defina-as na Vercel e faça um novo deploy.</p></div>';
+  throw new Error('SUPABASE_URL/SUPABASE_KEY ausentes (config.js não foi gerado pelo build).');
+}
 if (!window.supabase) throw new Error('Biblioteca do Supabase não carregou. Verifique a conexão com a internet.');
 export const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
