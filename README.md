@@ -48,16 +48,10 @@ da coluna `estoque` (o estoque só muda pelas funções, que registram o movimen
   Não existe caminho pela API/interface para virar Marketing (gatilho no banco bloqueia).
 - Desativar vendedor: tela *Vendedores* (ou `update perfis_mpdv set ativo=false`).
 
-## 3. Variáveis de ambiente (Vercel)
-O projeto continua sendo HTML/CSS/JS estático, mas agora gera `assets/js/runtime-config.js` durante o build.
-Configure na Vercel (Settings → Environment Variables), para Production, Preview e Development:
-- `SUPABASE_URL`: Project URL fornecida pela integração Supabase da Vercel.
-- `SUPABASE_PUBLISHABLE_KEY`: chave `sb_publishable_` fornecida pela integração.
-
-Também são aceitos os nomes `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-O `vercel.json` executa automaticamente `node scripts/generate-config.cjs`. Depois de cadastrar/alterar as variáveis, faça um novo deploy.
-**Nunca** configure `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`, `POSTGRES_PASSWORD` ou qualquer chave `service_role` no navegador.
-Para publicação no Netlify, mantenha a configuração em `assets/js/config.js`/`runtime-config.js` conforme seu processo de build; o script acima é direcionado à Vercel.
+## 3. Variáveis de ambiente
+Não há `.env` (site estático). A configuração pública está em `assets/js/config.js`: `SUPABASE_URL` e a chave
+**publishable** (já preenchidas com as do seu projeto). **Nunca** coloque service_role/secret key no front.
+Se mudar de projeto, ajuste também a URL no CSP do `netlify.toml`.
 
 ## 4. Como testar cada login
 - Marketing → após entrar vai para `#/admin` (Dashboard, Pedidos, Produtos, Vendedores).
@@ -65,9 +59,9 @@ Para publicação no Netlify, mantenha a configuração em `assets/js/config.js`
   (e, mesmo que a tela fosse burlada, o banco nega os dados).
 - Primeiro acesso / senha esquecida: “Esqueci minha senha” envia o link; a tela de nova senha já está implementada.
 
-## 5. Publicar (Vercel)
-Use Framework Preset `Other`, Root Directory `loja-mpdv` (ou `./` se essa pasta já for a raiz do repositório). O `vercel.json` define o build e a saída. Configure as duas variáveis acima e publique novamente.
-O `netlify.toml` é mantido apenas para publicação no Netlify.
+## 5. Publicar (Netlify)
+Arraste a **pasta inteira** (não só o index.html) em *Deploys*, ou conecte o repositório (publish dir `.`, sem build).
+O `netlify.toml` aplica CSP e demais cabeçalhos.
 
 ## 6. Regras de negócio (todas no banco)
 - **1 solicitação viva por vendedor por mês** (mês calculado no servidor, fuso de Brasília): índice único parcial +
@@ -79,3 +73,17 @@ O `netlify.toml` é mantido apenas para publicação no Netlify.
 - **Fluxo do Marketing:** aguardando → aprovado → separação → transporte → entregue (com “voltar uma etapa”).
   Cancelado, rejeitado e entregue são finais.
 - Registro de data, autor, papel e motivo em cancelamentos; histórico imutável; auditoria de produtos e perfis.
+
+## Publicar na Vercel com o Supabase da própria Vercel
+1. Suba a pasta do projeto para um repositório (GitHub) e importe na Vercel (*Add New → Project*).
+2. **Application Preset:** `Other`. O `vercel.json` já define `npm run build` e saída `dist` (não precisa mexer).
+3. **Storage / Integrations → Supabase → Add** (Marketplace). A Vercel cria o projeto Supabase e injeta as variáveis
+   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, etc.). O build lê **só a URL e a chave pública** e gera o
+   `config.js`. Se encontrar chave secreta (`service_role`/`sb_secret_`) no lugar da pública, **o build é abortado**.
+   Para usar outro projeto, defina `MPDV_SUPABASE_URL` e `MPDV_SUPABASE_KEY` (têm prioridade).
+4. **O banco desse projeto novo está vazio.** Abra o painel do Supabase (pela integração → *Open in Supabase*) e rode, nesta ordem,
+   `02_migracao.sql` e `03_storage.sql` (o `materiais_mpdv` é criado se não existir), desligue o cadastro aberto, crie os usuários
+   e rode `04_definir_marketing.sql` — igual ao passo 1 deste README. Os dados do projeto antigo **não** migram sozinhos.
+5. Depois do deploy, coloque a URL da Vercel em *Authentication → URL Configuration* (Site URL e Redirect URLs).
+6. Redeploy sempre que mudar variáveis (elas só entram no build).
+O mesmo build funciona no Netlify (`netlify.toml`).

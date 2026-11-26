@@ -1,2 +1,4 @@
-# Configuração gerada no build; contém apenas URL e chave pública.
-assets/js/runtime-config.js
+dist
+node_modules
+.vercel
+.env*
