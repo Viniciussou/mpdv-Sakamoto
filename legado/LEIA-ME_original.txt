@@ -1,0 +1,10 @@
+LOJA MPDV SAKAMOTO — CÓDIGO DA VERSÃO PUBLICADA PARA TESTES
+
+index.html: arquivo HTML completo da versão de login/catálogo enviada para publicação no Netlify.
+
+Para publicar: envie index.html no Netlify.
+
+ATENÇÃO: este arquivo não contém um painel administrativo completo.
+O banco Supabase e suas funções SQL são externos e não estão incluídos neste pacote.
+Não insira chaves secretas no HTML.
+Antes de uso com vendedores, valide políticas de acesso, pedidos e estoque.
