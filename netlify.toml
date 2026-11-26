@@ -2,7 +2,8 @@
   command = "npm run build"
   publish = "dist"
 
-# Cabeçalhos de segurança. Ajuste a URL do Supabase em connect-src/img-src se mudar de projeto.
+# Cabeçalhos de segurança. A CSP NÃO fica aqui: é gerada no build (scripts/build.mjs) a partir da
+# variável de ambiente do Supabase, para nunca divergir da URL usada pelo site.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -10,7 +11,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
 [[headers]]
   for = "/assets/*"

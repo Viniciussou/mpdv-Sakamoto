@@ -1,6 +1,6 @@
 // Build para Vercel/Netlify: copia o site para dist/ e gera dist/assets/js/config.js
 // a partir das variáveis de ambiente (integração Supabase da Vercel ou definidas à mão).
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 
 const env = process.env;
 const pick = (...names) => names.map((n) => env[n]).find((v) => v && v.trim())?.trim();
@@ -32,4 +32,19 @@ export const SUPABASE_URL = ${JSON.stringify(url.replace(/\/$/, ''))};
 export const SUPABASE_KEY = ${JSON.stringify(key)};
 export const POLL_MS = 30000;
 `);
+
+// CSP gerada da MESMA URL do config.js: impossível divergir. Só este projeto Supabase é permitido.
+const origin = new URL(url).origin;
+const wss = origin.replace(/^https:/, 'wss:');
+const csp = [`default-src 'self'`, `script-src 'self' https://cdn.jsdelivr.net`, `style-src 'self' 'unsafe-inline'`,
+  `img-src 'self' data: blob: ${origin}`, `connect-src 'self' ${origin} ${wss}`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`].join('; ');
+let page = readFileSync('dist/index.html', 'utf8');
+if (!page.includes('<!--MPDV_CSP-->')) { console.error('[build] index.html sem o marcador <!--MPDV_CSP-->'); process.exit(1); }
+page = page.replace('<!--MPDV_CSP-->', `<meta http-equiv="Content-Security-Policy" content="${csp}">`);
+writeFileSync('dist/index.html', page);
+
+// Verificação final: um único projeto Supabase em todo o dist.
+const hosts = new Set();
+for (const f of ['dist/index.html', 'dist/assets/js/config.js']) for (const m of readFileSync(f, 'utf8').matchAll(/[a-z0-9-]+\.supabase\.(?:co|in)/gi)) hosts.add(m[0].toLowerCase());
+if (hosts.size !== 1 || ![...hosts][0] || new URL(url).host.toLowerCase() !== [...hosts][0]) { console.error('[build] ABORTADO: URLs do Supabase inconsistentes no dist:', [...hosts]); process.exit(1); }
 console.log('[build] OK ->', url.replace(/\/$/, ''), '| chave pública:', key.slice(0, 12) + '…');

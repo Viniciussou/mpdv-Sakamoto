@@ -86,3 +86,19 @@ O `netlify.toml` aplica CSP e demais cabeçalhos.
 5. Depois do deploy, coloque a URL da Vercel em *Authentication → URL Configuration* (Site URL e Redirect URLs).
 6. Redeploy sempre que mudar variáveis (elas só entram no build).
 O mesmo build funciona no Netlify (`netlify.toml`).
+
+## Um único projeto Supabase (sem duplicidade)
+- A **única** fonte da URL/chave são as variáveis de ambiente da Vercel. O build (`scripts/build.mjs`) gera, a partir delas,
+  o `config.js` **e** a Content-Security-Policy (`<meta>` no `index.html`) — as duas sempre apontam para o mesmo projeto.
+  O build ainda confere que só existe um domínio Supabase no resultado e aborta se houver divergência.
+- A CSP libera apenas esse projeto (`https://<ref>.supabase.co` e `wss://<ref>.supabase.co`) e o `cdn.jsdelivr.net` (biblioteca do Supabase).
+- `vercel.json` e `netlify.toml` **não** têm mais CSP. Se, no painel da Vercel (Settings → Headers) ou num `vercel.json` antigo,
+  ainda existir um cabeçalho `Content-Security-Policy` com outra URL, **apague-o**: dois CSPs se somam e o mais restritivo vence.
+- Para trocar de projeto: altere as variáveis e faça Redeploy. Nenhum arquivo precisa ser editado.
+
+## Dados do projeto antigo (`mnyaqzxuzuiaqxkwqyfp`)
+O projeto da integração Vercel é um banco **novo**. Para levar o catálogo do antigo:
+1. No projeto novo, rode `02_migracao.sql` (cria `materiais_mpdv` com as colunas novas).
+2. No projeto antigo: Table Editor → `materiais_mpdv` → Export CSV (colunas `id, nome, categoria, estoque, ativo`).
+3. No novo: Table Editor → `materiais_mpdv` → Import CSV. (O estoque entra como "cadastro" no histórico de movimentos.)
+Usuários (Authentication) precisam ser recriados no projeto novo, pois senhas não são exportáveis; depois rode `04_definir_marketing.sql`.
