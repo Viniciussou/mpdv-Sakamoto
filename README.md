@@ -102,3 +102,17 @@ O projeto da integração Vercel é um banco **novo**. Para levar o catálogo do
 2. No projeto antigo: Table Editor → `materiais_mpdv` → Export CSV (colunas `id, nome, categoria, estoque, ativo`).
 3. No novo: Table Editor → `materiais_mpdv` → Import CSV. (O estoque entra como "cadastro" no histórico de movimentos.)
 Usuários (Authentication) precisam ser recriados no projeto novo, pois senhas não são exportáveis; depois rode `04_definir_marketing.sql`.
+
+## Gerenciar vendedores pela tela (Marketing)
+Em **Vendedores → Novo vendedor** o Marketing cadastra vendedores (nome, e-mail e senha, com gerador de senha segura),
+**redefine senhas** e **edita nome/e-mail**. Também ativa/desativa acessos e vê o histórico individual.
+
+Como funciona com segurança: criar usuários exige a chave **secreta** do Supabase, que não pode ir para o navegador.
+Por isso existe a função de servidor `api/usuarios.js` (roda na Vercel):
+- só atende quem tem sessão válida **e** perfil Marketing ativo (checado no servidor);
+- só altera contas de **vendedor** (nunca Marketing); não permite promover ninguém;
+- valida e-mail/senha, registra tudo na auditoria (`auditoria_mpdv`).
+
+Variável necessária na Vercel: **`SUPABASE_SERVICE_ROLE_KEY`** (a integração Supabase já a cria; sem o prefixo `NEXT_PUBLIC_`,
+portanto nunca vai ao navegador — o build ainda aborta se uma chave secreta aparecer no lugar da pública).
+Se preferir outro nome, use `MPDV_SUPABASE_SERVICE_KEY`. Esta tela só funciona publicada na Vercel (no Netlify a função `/api` não existe).

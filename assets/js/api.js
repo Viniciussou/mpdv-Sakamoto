@@ -104,6 +104,18 @@ export const listNotas = (id) => call(sb.from('solicitacao_notas_mpdv').select('
 export const listarVendedores = () => rpc('mpdv_listar_vendedores');
 export const atualizarVendedor = (id, { nome = null, ativo = null }) => rpc('mpdv_atualizar_vendedor', { p_id: id, p_nome: nome, p_ativo: ativo });
 
+/** Gerenciamento de contas (função de servidor /api/usuarios; só Marketing). */
+export async function usuarios(action, payload) {
+  const { data } = await sb.auth.getSession();
+  let r;
+  try {
+    r = await fetch('/api/usuarios', { method: 'POST', headers: { 'content-type': 'application/json', Authorization: `Bearer ${data.session?.access_token || ''}` }, body: JSON.stringify({ action, ...payload }) });
+  } catch (e) { throw toAppError(e); }
+  let j = null; try { j = await r.json(); } catch { /* sem corpo */ }
+  if (r.status === 404) throw new AppError('O gerenciamento de contas só funciona no site publicado na Vercel (função /api/usuarios).', 'INDISPONIVEL');
+  if (!r.ok) throw new AppError(j?.erro || 'Não foi possível concluir a operação.', j?.codigo);
+  return j;
+}
 export const criarProduto = (p) => call(sb.from('materiais_mpdv').insert(p).select().single());
 export const atualizarProduto = (id, p) => call(sb.from('materiais_mpdv').update(p).eq('id', id).select().single());
 export const excluirProduto = (id) => call(sb.from('materiais_mpdv').delete().eq('id', id));

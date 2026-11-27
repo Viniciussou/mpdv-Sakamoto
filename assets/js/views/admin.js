@@ -290,10 +290,82 @@ async function estoqueModal(m, reload) {
 /* =====================================================================
    VENDEDORES
    ===================================================================== */
+const gerarSenha = () => { // 12 caracteres sem símbolos ambíguos (0/O, 1/l/I)
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; const b = new Uint32Array(12); crypto.getRandomValues(b);
+  return [...b].map((n) => A[n % A.length]).join('');
+};
+async function copiar(texto) {
+  try { await navigator.clipboard.writeText(texto); toast('Copiado!'); } catch { toast('Não foi possível copiar automaticamente. Selecione e copie o texto.', 'error'); }
+}
+const senhaField = (id, label = 'Senha') => html`<div class="field"><label for="${id}">${label} * <span class="hint">(mínimo 8 caracteres)</span></label>
+  <div class="row" style="gap:8px"><div class="input-wrap grow">${ic('lock')}<input id="${id}" class="input" type="text" autocomplete="new-password" minlength="8" maxlength="72" required spellcheck="false" style="padding-right:12px"></div>
+  <button type="button" class="btn secondary" data-gen="${id}">${ic('refresh', 'sm')}Gerar</button></div></div>`;
+const credenciais = (nome, email, senha, titulo) => html`<div class="alert success" style="animation:none">${ic('check-circle', 'lg')}<div class="grow"><div class="alert-title">${titulo}</div>
+  <div class="small">Anote ou copie agora: <b>a senha não será mostrada novamente.</b></div></div></div>
+  <div class="card pad" style="background:var(--surface-2)"><dl class="kv"><dt>Nome</dt><dd>${nome}</dd><dt>E-mail</dt><dd>${email}</dd><dt>Senha</dt><dd><b style="font-family:ui-monospace,monospace;letter-spacing:.04em">${senha}</b></dd></dl></div>`;
+
+function vendedorFormModal(v, reload) {
+  const novo = !v; let feito = null;
+  const mod = openModal(html`<form id="vf" novalidate><div class="modal-head"><div><h2>${novo ? 'Novo vendedor' : 'Editar vendedor'}</h2>
+      <p class="muted small" style="margin-top:4px">${novo ? 'O vendedor poderá entrar na loja com este e-mail e senha.' : 'Altere o nome e/ou o e-mail de acesso.'}</p></div><button type="button" class="btn ghost icon sm" data-close aria-label="Fechar">${ic('x')}</button></div>
+    <div class="modal-body" id="vbody">
+      <div class="field"><label for="v-nome">Nome *</label><input id="v-nome" class="input" maxlength="120" required value="${v?.nome || ''}" autofocus></div>
+      <div class="field"><label for="v-email">E-mail *</label><div class="input-wrap">${ic('mail')}<input id="v-email" class="input" type="email" maxlength="254" required autocomplete="off" value="${v?.email || ''}" placeholder="vendedor@empresa.com.br"></div></div>
+      ${novo ? senhaField('v-senha') : ''}
+      <div id="v-err" class="alert danger hidden" role="alert" style="animation:none"></div></div>
+    <div class="modal-foot" id="vfoot"><button type="button" class="btn secondary" data-close>Cancelar</button><button type="submit" class="btn" id="v-save">${novo ? 'Criar vendedor' : 'Salvar'}</button></div></form>`);
+  const err = (t) => { const e = $('#v-err', mod.el); e.textContent = t; e.classList.toggle('hidden', !t); };
+  if (novo) { $('#v-senha', mod.el).value = gerarSenha(); }
+  on(mod.el, 'click', '[data-gen]', (_e, b) => { $('#' + b.dataset.gen, mod.el).value = gerarSenha(); });
+  $('#vf', mod.el).addEventListener('submit', async (ev) => {
+    ev.preventDefault(); if (feito) return; err('');
+    const nome = $('#v-nome', mod.el).value.trim(), email = $('#v-email', mod.el).value.trim().toLowerCase(), senha = novo ? $('#v-senha', mod.el).value : '';
+    if (!nome) return err('Informe o nome.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return err('Informe um e-mail válido.');
+    if (novo && senha.length < 8) return err('A senha deve ter pelo menos 8 caracteres.');
+    await busy($('#v-save', mod.el), async () => {
+      try {
+        if (novo) {
+          await api.usuarios('criar', { nome, email, senha }); feito = true;
+          mount($('#vbody', mod.el), credenciais(nome, email, senha, 'Vendedor criado com sucesso!'));
+          mount($('#vfoot', mod.el), html`<button type="button" class="btn secondary" data-copy>${ic('copy', 'sm')}Copiar acesso</button><button type="button" class="btn" data-close>Concluir</button>`);
+          on(mod.el, 'click', '[data-copy]', () => copiar(`Loja MPDV Sakamoto\nE-mail: ${email}\nSenha: ${senha}`));
+        } else {
+          if (nome !== (v.nome || '')) await api.atualizarVendedor(v.id, { nome });
+          if (email !== (v.email || '').toLowerCase()) await api.usuarios('email', { id: v.id, email });
+          toast('Dados atualizados.'); mod.close();
+        }
+        await reload();
+      } catch (e) { err(api.toAppError(e).message); }
+    });
+  });
+}
+
+function senhaModal(v) {
+  let feito = null;
+  const mod = openModal(html`<form id="sf" novalidate><div class="modal-head"><div><h2>Redefinir senha</h2><p class="muted small" style="margin-top:4px">${v.nome || v.email} · ${v.email}</p></div><button type="button" class="btn ghost icon sm" data-close aria-label="Fechar">${ic('x')}</button></div>
+    <div class="modal-body" id="sbody">${senhaField('s-senha', 'Nova senha')}<div id="s-err" class="alert danger hidden" role="alert" style="animation:none"></div></div>
+    <div class="modal-foot" id="sfoot"><button type="button" class="btn secondary" data-close>Cancelar</button><button type="submit" class="btn" id="s-save">${ic('key', 'sm')}Redefinir senha</button></div></form>`);
+  $('#s-senha', mod.el).value = gerarSenha();
+  on(mod.el, 'click', '[data-gen]', (_e, b) => { $('#' + b.dataset.gen, mod.el).value = gerarSenha(); });
+  $('#sf', mod.el).addEventListener('submit', async (ev) => {
+    ev.preventDefault(); if (feito) return; const er = $('#s-err', mod.el); er.classList.add('hidden');
+    const senha = $('#s-senha', mod.el).value;
+    if (senha.length < 8) { er.textContent = 'A senha deve ter pelo menos 8 caracteres.'; er.classList.remove('hidden'); return; }
+    await busy($('#s-save', mod.el), async () => {
+      try {
+        await api.usuarios('senha', { id: v.id, senha }); feito = true;
+        mount($('#sbody', mod.el), credenciais(v.nome || '—', v.email, senha, 'Senha redefinida!'));
+        mount($('#sfoot', mod.el), html`<button type="button" class="btn secondary" data-copy>${ic('copy', 'sm')}Copiar acesso</button><button type="button" class="btn" data-close>Concluir</button>`);
+        on(mod.el, 'click', '[data-copy]', () => copiar(`Loja MPDV Sakamoto\nE-mail: ${v.email}\nNova senha: ${senha}`));
+      } catch (e) { er.textContent = api.toAppError(e).message; er.classList.remove('hidden'); }
+    });
+  });
+}
+
 export async function vendedoresView(root, ctx) {
   let list = [], q = '';
-  mount(root, html`<div class="page"><div class="page-head"><div><h1>Vendedores</h1><p>Acompanhe quem solicitou, consulte o histórico individual e ative ou desative acessos.</p></div></div>
-    <details class="alert info" style="animation:none;display:block;margin-bottom:18px"><summary class="strong" style="cursor:pointer">Como cadastrar um novo vendedor</summary><p class="small" style="margin-top:8px">Crie o usuário no painel do Supabase (<b>Authentication → Users → Add user</b>, com e-mail e senha). O perfil de <b>vendedor</b> é criado automaticamente no primeiro acesso e aparece aqui. Por segurança, o cadastro de usuários não é feito por esta tela.</p></details>
+  mount(root, html`<div class="page"><div class="page-head"><div><h1>Vendedores</h1><p>Cadastre vendedores, redefina senhas, consulte o histórico individual e ative ou desative acessos.</p></div><button class="btn" id="novo">${ic('user-plus')}Novo vendedor</button></div>
     <div class="toolbar"><div class="input-wrap">${ic('search')}<input id="q" class="input" type="search" placeholder="Buscar vendedor…" aria-label="Buscar vendedor" autocomplete="off"></div></div>
     <div id="list" class="card">${skeletonBlock(220)}</div></div>`);
   function paint() {
@@ -306,11 +378,13 @@ export async function vendedoresView(root, ctx) {
         <td data-label="Solicitações" class="right">${v.total_solicitacoes}</td>
         <td data-label="Última" class="muted nowrap">${v.ultima_solicitacao ? fmtDate(v.ultima_solicitacao) : '—'}</td>
         <td data-label="Ativo"><label class="switch"><input type="checkbox" data-toggle="${v.id}" ${v.ativo ? 'checked' : ''} aria-label="Ativo: ${v.nome || v.email}"><span></span></label></td>
-        <td class="cell-actions right"><button class="btn sm secondary">Histórico ${ic('chevron-right', 'sm')}</button></td></tr>`)}</tbody></table></div>`
-      : emptyState('users', 'Nenhum vendedor encontrado', list.length ? 'Ajuste a busca.' : 'Cadastre usuários no Supabase Auth para que apareçam aqui.'));
+        <td class="cell-actions right"><button class="btn sm secondary">Gerenciar ${ic('chevron-right', 'sm')}</button></td></tr>`)}</tbody></table></div>`
+      : emptyState('users', 'Nenhum vendedor encontrado', list.length ? 'Ajuste a busca.' : 'Clique em “Novo vendedor” para cadastrar o primeiro.', list.length ? '' : html`<button class="btn" data-newempty>${ic('user-plus')}Novo vendedor</button>`));
   }
   async function load() { list = await api.listarVendedores(); paint(); }
   $('#q', root).addEventListener('input', debounce((e) => { q = e.target.value; paint(); }, 150));
+  on(root, 'click', '#novo', () => vendedorFormModal(null, load));
+  on(root, 'click', '[data-newempty]', () => vendedorFormModal(null, load));
   on(root, 'click', '[data-toggle]', (e) => e.stopPropagation());
   on(root, 'change', '[data-toggle]', async (_e, el) => {
     const v = list.find((x) => x.id === el.dataset.toggle);
@@ -321,15 +395,18 @@ export async function vendedoresView(root, ctx) {
     try { await api.atualizarVendedor(el.dataset.toggle, { ativo: el.checked }); toast(el.checked ? 'Vendedor ativado.' : 'Vendedor desativado.'); await load(); }
     catch (e) { toast(api.toAppError(e).message, 'error'); await load().catch(() => {}); }
   });
-  on(root, 'click', '[data-open]', (e, el) => { if (e.target.closest('.switch')) return; vendedorDrawer(list.find((x) => x.id === el.dataset.open)); });
+  on(root, 'click', '[data-open]', (e, el) => { if (e.target.closest('.switch')) return; vendedorDrawer(list.find((x) => x.id === el.dataset.open), load); });
   try { await load(); } catch (e) { mount($('#list', root), alertBox('danger', 'Erro ao carregar vendedores', api.toAppError(e).message)); }
   return { refresh: () => load().catch(() => {}), destroy() {} };
 }
 
-async function vendedorDrawer(v) {
+async function vendedorDrawer(v, reload) {
   const d = openModal(html`<div class="drawer-head"><div class="row"><div class="avatar">${initials(v.nome || v.email)}</div><div><h2>${v.nome || '—'}</h2><p class="small muted">${v.email}</p></div></div><button class="btn ghost icon" data-close aria-label="Fechar">${ic('x')}</button></div>
     <div class="drawer-body"><div class="row wrap"><span class="badge ${v.ativo ? 'green' : 'red'}">${v.ativo ? 'Ativo' : 'Desativado'}</span><span class="small muted">${v.total_solicitacoes} solicitação(ões) · cadastrado em ${fmtDate(v.criado_em)}</span></div>
+    <div class="row wrap"><button class="btn secondary sm" data-edit>${ic('edit', 'sm')}Editar dados</button><button class="btn secondary sm" data-pass>${ic('key', 'sm')}Redefinir senha</button></div>
     <section><div class="section-title">Histórico de solicitações</div><div id="h" class="card">${skeletonBlock(120)}</div></section></div>`, { drawer: true });
+  on(d.el, 'click', '[data-edit]', () => { d.close(); vendedorFormModal(v, reload); });
+  on(d.el, 'click', '[data-pass]', () => senhaModal(v));
   try {
     const sols = await api.solicitacoesDoVendedor(v.id);
     mount($('#h', d.el), sols.length ? html`${sols.map((s) => html`<div class="order-card" data-sol="${s.id}"><div><div class="row wrap" style="gap:10px"><span class="order-num">${numeroFmt(s.numero)}</span>${statusBadge(s.status)}</div><div class="small muted" style="margin-top:4px">${fmtDateTime(s.criado_em)} · ${totalItens(s)} item(ns) · ${fmtMes(s.mes_referencia)}</div></div><span class="muted">${ic('chevron-right')}</span></div>`)}` : emptyState('clipboard', 'Sem solicitações', 'Este vendedor ainda não fez pedidos.'));
